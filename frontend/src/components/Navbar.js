@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import toast from 'react-hot-toast';
 
 const navLinks = [
   { name: 'Marketplace', href: '/marketplace' },
@@ -13,20 +16,19 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-
-    const token = localStorage.getItem('creatorchain_token');
-    const userData = localStorage.getItem('creatorchain_user');
-    if (token && userData) {
-      try { setUser(JSON.parse(userData)); } catch {}
-    }
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleLogout = () => {
+    logout();
+    toast.success('Logged out successfully');
+  };
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
@@ -50,26 +52,37 @@ export default function Navbar() {
 
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link key={link.name} href={link.href}
-                    className="px-4 py-2 text-sm text-white/70 hover:text-white rounded-lg
-                              hover:bg-white/5 transition-all duration-200">
-                {link.name}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link key={link.name} href={link.href}
+                      className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
+                        isActive ? 'text-white bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/5'
+                      }`}>
+                  {link.name}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Auth / Wallet */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 glass-card rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-xs font-mono text-white/60">
-                    {user.walletAddress?.slice(0, 6)}...{user.walletAddress?.slice(-4)}
+                    {user.wallet_address?.slice(0, 6)}...{user.wallet_address?.slice(-4)}
                   </span>
                 </div>
-                <span className="text-sm text-white/80">{user.name}</span>
+                <div className="flex items-center gap-3 border-l border-white/10 pl-4">
+                  <span className="text-sm font-medium text-white/80">{user.name}</span>
+                  <button onClick={handleLogout} className="text-white/40 hover:text-white transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ) : (
               <Link href="/auth" className="btn-primary text-sm py-2 px-5">
@@ -103,11 +116,17 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            <div className="pt-2">
-              <Link href="/auth" className="block text-center btn-primary text-sm"
-                    onClick={() => setMobileOpen(false)}>
-                Get Started
-              </Link>
+            <div className="pt-2 border-t border-white/10 mt-2">
+              {user ? (
+                <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-4 py-3 text-red-400 hover:bg-white/5 rounded-xl transition-colors">
+                  Log Out
+                </button>
+              ) : (
+                <Link href="/auth" className="block text-center btn-primary text-sm"
+                      onClick={() => setMobileOpen(false)}>
+                  Get Started
+                </Link>
+              )}
             </div>
           </div>
         </div>

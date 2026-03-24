@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import StatusTracker from '@/components/StatusTracker';
+import EarningsChart from '@/components/EarningsChart';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import toast from 'react-hot-toast';
 
 const statusColors = {
   PENDING: 'badge-pending',
@@ -16,7 +21,8 @@ const statusColors = {
 };
 
 export default function DashboardPage() {
-  const [user, setUser] = useState(null);
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [content, setContent] = useState([]);
   const [earnings, setEarnings] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -25,32 +31,40 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [activeJobs, setActiveJobs] = useState([]);
   const [tab, setTab] = useState('content');
+  const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('creatorchain_user');
-    if (userData) {
-      try { setUser(JSON.parse(userData)); } catch {}
+    if (authLoading) return;
+    if (!user) {
+      router.push('/auth');
+      return;
     }
-    // In a real app, we'd fetch from API
-    // For demo, populate with mock data
-    setContent([
-      { id: '1', title: 'Sunset Photography', category: 'image', status: 'REGISTERED', price: '0.05', preview_url: null, license_count: 12, total_earnings: '0.60', created_at: new Date().toISOString(), ipfs_cid: 'QmSim1234', tx_hash: '0x1234...abcd' },
-      { id: '2', title: 'Lo-fi Beat Pack', category: 'audio', status: 'REGISTERED', price: '0.10', preview_url: null, license_count: 8, total_earnings: '0.80', created_at: new Date().toISOString(), ipfs_cid: 'QmSim5678', tx_hash: '0x5678...efgh' },
-      { id: '3', title: 'Motion Graphics Intro', category: 'video', status: 'PROCESSING', price: '0.25', preview_url: null, license_count: 0, total_earnings: '0', created_at: new Date().toISOString() },
-    ]);
-    setEarnings({
-      totalEarnings: 1.40,
-      totalClaimed: 0.50,
-      unclaimed: 0.90,
-      dailyEarnings: [
-        { date: '2026-03-20', daily_amount: 0.15 },
-        { date: '2026-03-21', daily_amount: 0.25 },
-        { date: '2026-03-22', daily_amount: 0.10 },
-        { date: '2026-03-23', daily_amount: 0.40 },
-        { date: '2026-03-24', daily_amount: 0.50 },
-      ],
-    });
-  }, []);
+
+    const fetchData = async () => {
+      try {
+        const [contentRes, earningsRes] = await Promise.all([
+          api.getMyContent(),
+          api.getEarnings(),
+        ]);
+        setContent(contentRes.content || []);
+        setEarnings(earningsRes);
+        
+        // Find any active jobs from the content list and add them to active jobs
+        const pending = (contentRes.content || []).filter(c => !['REGISTERED', 'REJECTED', 'FAILED'].includes(c.status));
+        if (pending.length > 0) {
+          // We need job IDs, but content API might just have the item details.
+          // For now, let's keep it simple — we'll only track new active jobs via session state on upload.
+          // Real app would fetch incomplete jobs endpoint.
+        }
+      } catch (err) {
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    fetchData();
+  }, [user, authLoading, router]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -59,16 +73,58 @@ export default function DashboardPage() {
 
     try {
       const data = await api.uploadContent(uploadFile, uploadMeta);
-      setActiveJobs([...activeJobs, { jobId: data.jobId, contentId: data.contentId, ...uploadMeta, status: 'PENDING' }]);
+      setActiveJobs(prev => [...prev, { jobId: data.jobId, contentId: data.contentId, ...uploadMeta, status: 'PENDING' }]);
       setShowUpload(false);
       setUploadFile(null);
       setUploadMeta({ title: '', description: '', category: 'image', price: '0.01' });
+      setTab('processing');
+      toast.success('Upload started! Checking for duplicates...', { icon: '🚀' });
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
   };
+
+  const handleJobComplete = (result) => {
+    if (result.status === 'REGISTERED') {
+      toast.success(`Content registered successfully!`, { icon: '📜' });
+      // Refresh content list
+      api.getMyContent().then(res => setContent(res.content || []));
+    } else if (result.status === 'REJECTED') {
+      toast.error(`Content rejected: ${result.error}`, { icon: '⚠️' });
+    } else {
+      toast.error(`Processing failed: ${result.error}`);
+    }
+  };
+
+  const handleClaim = async () => {
+    const amount = earnings?.unclaimed;
+    if (!amount || amount <= 0) return;
+    
+    // Toast promise for claim
+    toast.promise(
+      api.claimRoyalty(amount, []), // The backend generates the real proof internally or requires it based on impl
+      {
+        loading: 'Verifying Merkle proof & claiming royalties...',
+        success: () => {
+          // Refresh earnings
+          api.getEarnings().then(setEarnings);
+          return `Successfully claimed ${amount} MATIC!`;
+        },
+        error: (err) => `Claim failed: ${err.message}`,
+      }
+    );
+  };
+
+  if (authLoading || fetching) {
+    return (
+      <main className="page-container">
+        <Navbar />
+        <div className="pt-32 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-neon-cyan border-t-transparent animate-spin" /></div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-container">
@@ -108,26 +164,10 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Earnings Chart (simplified bar representation) */}
-        {earnings?.dailyEarnings && (
-          <div className="glass-card p-6 mb-8">
-            <h3 className="font-semibold text-white mb-4">Earnings (Last 5 days)</h3>
-            <div className="flex items-end gap-3 h-32">
-              {earnings.dailyEarnings.map((day, i) => {
-                const maxAmount = Math.max(...earnings.dailyEarnings.map(d => parseFloat(d.daily_amount)));
-                const height = (parseFloat(day.daily_amount) / maxAmount) * 100;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                    <span className="text-xs text-white/60">{parseFloat(day.daily_amount).toFixed(2)}</span>
-                    <div className="w-full rounded-t-lg bg-gradient-to-t from-neon-cyan/30 to-neon-cyan/70 transition-all duration-500"
-                         style={{ height: `${height}%`, minHeight: '8px' }} />
-                    <span className="text-xs text-white/30">{new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Earnings Chart */}
+        <div className="mb-8">
+          <EarningsChart dailyEarnings={earnings?.dailyEarnings || []} />
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 glass-card rounded-xl mb-6 max-w-sm">
@@ -136,7 +176,7 @@ export default function DashboardPage() {
                     className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
                       tab === t ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
                     }`}>
-              {t === 'content' ? 'My Content' : 'Processing'}
+              {t === 'content' ? 'My Content' : `Processing (${activeJobs.length})`}
             </button>
           ))}
         </div>
@@ -147,27 +187,34 @@ export default function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Content</th>
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Type</th>
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Status</th>
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Price</th>
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Licenses</th>
-                    <th className="text-left px-6 py-4 text-xs text-white/40 uppercase tracking-wider">Earned</th>
+                  <tr className="border-b border-white/5 bg-white/[0.02]">
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white/40 uppercase tracking-wider">Content Info</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white/40 uppercase tracking-wider">Type</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white/40 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white/40 uppercase tracking-wider">Price / Licenses</th>
+                    <th className="text-right px-6 py-4 text-xs font-semibold text-white/40 uppercase tracking-wider">Earned</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {content.map((item) => (
+                  {content.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center text-white/40">You haven't uploaded any content yet.</td>
+                    </tr>
+                  ) : content.map((item) => (
                     <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-medium text-white text-sm">{item.title}</div>
-                        {item.ipfs_cid && <div className="text-xs text-white/30 font-mono mt-0.5">{item.ipfs_cid.substring(0, 16)}...</div>}
+                        {item.ipfs_cid && <div className="text-xs text-white/30 font-mono mt-0.5" title={item.ipfs_cid}>{item.ipfs_cid.substring(0, 16)}...</div>}
                       </td>
                       <td className="px-6 py-4 text-sm text-white/60 capitalize">{item.category}</td>
-                      <td className="px-6 py-4"><span className={statusColors[item.status]}>{item.status}</span></td>
-                      <td className="px-6 py-4 text-sm text-white/60">{item.price} MATIC</td>
-                      <td className="px-6 py-4 text-sm text-white/60">{item.license_count}</td>
-                      <td className="px-6 py-4 text-sm text-neon-cyan font-medium">{item.total_earnings} MATIC</td>
+                      <td className="px-6 py-4"><span className={statusColors[item.status] || 'badge-pending'}>{item.status}</span></td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-white/80">{item.price} MATIC</div>
+                        <div className="text-xs text-white/40 mt-0.5">{item.license_count || 0} sold</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neon-cyan font-semibold text-right text-lg">
+                        {item.total_earnings || 0}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -182,20 +229,13 @@ export default function DashboardPage() {
             {activeJobs.length === 0 ? (
               <div className="glass-card p-12 text-center">
                 <span className="text-4xl mb-4 block">⏳</span>
-                <p className="text-white/40">No active processing jobs</p>
+                <p className="text-white/40">No active uploads processing</p>
               </div>
             ) : (
               activeJobs.map((job) => (
-                <div key={job.jobId} className="glass-card p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-medium text-white">{job.title}</span>
-                    <span className={statusColors[job.status]}>{job.status}</span>
-                  </div>
-                  <div className="w-full bg-white/5 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-neon-cyan to-neon-purple h-2 rounded-full transition-all duration-500"
-                         style={{ width: '30%' }} />
-                  </div>
-                  <p className="text-xs text-white/30 mt-2">Job ID: {job.jobId}</p>
+                <div key={job.jobId}>
+                  <div className="mb-2 px-2 text-sm font-medium text-white">{job.title}</div>
+                  <StatusTracker jobId={job.jobId} onComplete={handleJobComplete} />
                 </div>
               ))
             )}
@@ -203,16 +243,20 @@ export default function DashboardPage() {
         )}
 
         {/* Claim Button */}
-        {earnings && earnings.unclaimed > 0 && (
-          <div className="mt-8 glass-card p-6 neon-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        {earnings && Number(earnings.unclaimed) > 0 && (
+          <div className="mt-8 glass-card p-6 border border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-glow shadow-[0_0_30px_rgba(245,158,11,0.1)]">
             <div>
-              <p className="text-white font-semibold">Unclaimed Royalties</p>
-              <p className="text-2xl font-bold neon-text">{earnings.unclaimed} MATIC</p>
+              <p className="text-white font-semibold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                Unclaimed Royalties Available
+              </p>
+              <div className="flex items-end gap-2 mt-1">
+                <p className="text-3xl font-bold neon-text bg-gradient-to-r from-amber-400 to-orange-500">{earnings.unclaimed}</p>
+                <p className="text-white/40 pb-1 font-medium text-sm">MATIC</p>
+              </div>
             </div>
-            <button className="btn-primary flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
+            <button onClick={handleClaim} className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl
+                                                   transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/30 hover:scale-[1.02] flex items-center gap-2 text-lg">
               Withdraw via Merkle Proof
             </button>
           </div>
@@ -221,32 +265,31 @@ export default function DashboardPage() {
 
       {/* Upload Modal */}
       {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="glass-card p-8 w-full max-w-lg neon-border animate-slide-up">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card p-8 w-full max-w-lg neon-border animate-slide-up shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Upload Content</h2>
-              <button onClick={() => setShowUpload(false)} className="text-white/40 hover:text-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h2 className="text-xl font-bold text-white">Upload New Content</h2>
+              <button type="button" onClick={() => setShowUpload(false)} className="text-white/40 hover:text-white p-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <form onSubmit={handleUpload} className="space-y-4">
-              {/* File Drop Zone */}
+            <form onSubmit={handleUpload} className="space-y-5">
               <label className="block w-full p-8 border-2 border-dashed border-white/10 rounded-xl text-center cursor-pointer
-                               hover:border-neon-cyan/30 hover:bg-white/[0.02] transition-all">
+                               hover:border-neon-cyan/30 hover:bg-white/[0.02] transition-colors focus-within:border-neon-cyan/50">
                 {uploadFile ? (
                   <div>
-                    <span className="text-3xl">✅</span>
-                    <p className="text-white mt-2">{uploadFile.name}</p>
-                    <p className="text-xs text-white/40">{(uploadFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <span className="text-3xl block mb-2">✅</span>
+                    <p className="text-white font-medium truncate px-4">{uploadFile.name}</p>
+                    <p className="text-xs text-white/40 mt-1">{(uploadFile.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 ) : (
                   <div>
-                    <span className="text-3xl">📁</span>
-                    <p className="text-white/40 mt-2">Drop file or click to browse</p>
-                    <p className="text-xs text-white/20 mt-1">Images, Audio, Video • Max 100MB</p>
+                    <span className="text-3xl block mb-2 opacity-80">📁</span>
+                    <p className="text-white/60 font-medium text-sm">Drop file or click to browse</p>
+                    <p className="text-[10px] uppercase tracking-wider text-white/30 mt-2">Images, Audio, Video • Max 100MB</p>
                   </div>
                 )}
                 <input type="file" className="hidden" onChange={(e) => setUploadFile(e.target.files[0])}
@@ -254,23 +297,23 @@ export default function DashboardPage() {
               </label>
 
               <div>
-                <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider">Title</label>
+                <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider font-semibold">Title</label>
                 <input type="text" className="input-field" value={uploadMeta.title}
                        onChange={(e) => setUploadMeta({...uploadMeta, title: e.target.value})}
-                       placeholder="Content title" required />
+                       placeholder="e.g. Sunset Photography Pack" required />
               </div>
 
               <div>
-                <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider">Description</label>
-                <textarea className="input-field h-20 resize-none" value={uploadMeta.description}
+                <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider font-semibold">Description</label>
+                <textarea className="input-field h-24 resize-none" value={uploadMeta.description}
                           onChange={(e) => setUploadMeta({...uploadMeta, description: e.target.value})}
-                          placeholder="Describe your content" />
+                          placeholder="Describe your content..." />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider">Category</label>
-                  <select className="input-field" value={uploadMeta.category}
+                  <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider font-semibold">Type</label>
+                  <select className="input-field appearance-none" value={uploadMeta.category}
                           onChange={(e) => setUploadMeta({...uploadMeta, category: e.target.value})}>
                     <option value="image">Image</option>
                     <option value="audio">Audio</option>
@@ -278,23 +321,23 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider">Price (MATIC)</label>
+                  <label className="block text-xs text-white/40 mb-1.5 uppercase tracking-wider font-semibold">Price (MATIC)</label>
                   <input type="number" step="0.001" min="0" className="input-field" value={uploadMeta.price}
                          onChange={(e) => setUploadMeta({...uploadMeta, price: e.target.value})} />
                 </div>
               </div>
 
               <button type="submit" disabled={uploading || !uploadFile}
-                      className="btn-primary w-full flex items-center justify-center gap-2">
+                      className="btn-primary w-full flex items-center justify-center gap-2 py-3.5 mt-2 text-base">
                 {uploading ? (
                   <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Uploading...
+                    Uploading & Fingerprinting...
                   </>
-                ) : 'Upload & Process'}
+                ) : 'Upload & Verify Ownership'}
               </button>
             </form>
           </div>

@@ -3,37 +3,43 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function AuthPage() {
   const router = useRouter();
+  const { login, register } = useAuth();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('creator');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
-      let data;
       if (mode === 'register') {
-        data = await api.register(email, name, role);
+        await register(email, name, role);
+        toast.success('Account created successfully!');
       } else {
-        data = await api.login(email);
+        await login(email);
+        toast.success('Welcome back!');
       }
-
-      localStorage.setItem('creatorchain_user', JSON.stringify(data.user));
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoLogin = (role) => {
+    setEmail(role === 'creator' ? 'alex@creatorchain.io' : 'buyer@creatorchain.io');
+    setName(role === 'creator' ? 'Alex Chen' : 'Demo Buyer');
+    setMode('login');
+    toast('Demo credentials loaded. Click Sign In.', { icon: '👋' });
   };
 
   return (
@@ -67,7 +73,7 @@ export default function AuthPage() {
             {/* Tabs */}
             <div className="flex gap-1 p-1 glass-card rounded-xl mb-6">
               {['login', 'register'].map((m) => (
-                <button key={m} onClick={() => { setMode(m); setError(''); }}
+                <button key={m} type="button" onClick={() => setMode(m)}
                         className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                           mode === m ? 'bg-gradient-to-r from-neon-cyan/20 to-neon-purple/20 text-white' : 'text-white/40 hover:text-white/60'
                         }`}>
@@ -103,14 +109,8 @@ export default function AuthPage() {
                 </div>
               )}
 
-              {error && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-
               <button type="submit" disabled={loading}
-                      className="btn-primary w-full text-center flex items-center justify-center gap-2">
+                      className="btn-primary w-full text-center flex items-center justify-center gap-2 mt-2">
                 {loading && (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -121,28 +121,25 @@ export default function AuthPage() {
               </button>
             </form>
 
-            {/* Social Login Divider */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-white/10" />
-              <span className="text-xs text-white/30">or continue with</span>
+              <span className="text-xs text-white/30">or continue with demo accounts</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
-            {/* Social Buttons */}
             <div className="grid grid-cols-2 gap-3">
-              <button className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
-                      onClick={() => { setEmail('demo@creatorchain.io'); setName('Demo Creator'); setMode('register'); }}>
-                <span>🌐</span> Google
+              <button type="button" className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
+                      onClick={() => handleDemoLogin('creator')}>
+                <span>🎨</span> Demo Creator
               </button>
-              <button className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
-                      onClick={() => { setEmail('demo@creatorchain.io'); setName('Demo Creator'); setMode('register'); }}>
-                <span>🔑</span> Wallet
+              <button type="button" className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
+                      onClick={() => handleDemoLogin('buyer')}>
+                <span>🛒</span> Demo Buyer
               </button>
             </div>
 
-            {/* Wallet Notice */}
-            <p className="text-center text-xs text-white/20 mt-6">
-              🔒 An embedded wallet (ERC-4337) will be created automatically. No MetaMask needed.
+            <p className="text-center text-xs text-white/20 mt-6 md:px-4">
+              🔒 An embedded wallet (ERC-4337) will be automatically provisioned.
             </p>
           </div>
         </div>
