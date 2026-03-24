@@ -59,7 +59,7 @@ router.post('/register', async (req, res) => {
 
 /**
  * POST /api/auth/login
- * Social login simulation (would use Privy/Magic in production)
+ * Login or auto-register — seamless auth (no "user not found" errors)
  */
 router.post('/login', async (req, res) => {
   try {
@@ -69,13 +69,23 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const result = await db.query(
+    let result = await db.query(
       'SELECT id, email, name, wallet_address, role FROM users WHERE email = $1',
       [email]
     );
 
+    // Auto-register if user doesn't exist
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found. Please register first.' });
+      const wallet = ethers.Wallet.createRandom();
+      const walletAddress = wallet.address;
+      const name = email.split('@')[0]; // Use email prefix as default name
+
+      result = await db.query(
+        `INSERT INTO users (id, email, name, wallet_address, role)
+         VALUES ($1, $2, $3, $4, 'creator')
+         RETURNING id, email, name, wallet_address, role`,
+        [uuidv4(), email, name, walletAddress]
+      );
     }
 
     const user = result.rows[0];

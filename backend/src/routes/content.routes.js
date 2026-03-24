@@ -3,10 +3,25 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
-const { contentQueue } = require('../config/queue');
 const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
+
+// ─── Preview URL Resolver ─────────────────────────────────
+// Converts relative /uploads/... paths to full URLs so frontend can load them.
+function resolvePreviewUrls(rows, req) {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  return rows.map(row => {
+    if (row.preview_url && row.preview_url.startsWith('/uploads/')) {
+      row.preview_url = `${baseUrl}${row.preview_url}`;
+    }
+    // Also set cover_url for frontend compatibility
+    if (!row.cover_url && row.preview_url) {
+      row.cover_url = row.preview_url;
+    }
+    return row;
+  });
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -33,7 +48,7 @@ const upload = multer({
 
 /**
  * POST /api/content/upload
- * Upload content + metadata → async processing pipeline
+ * Upload content + inline processing with duplicate detection
  */
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   try {
@@ -50,43 +65,56 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     if (mimeType.startsWith('audio')) contentType = 'audio';
     if (mimeType.startsWith('video')) contentType = 'video';
 
-    // Insert content record (status = PENDING)
+    // ─── Fingerprint: SHA-256 hash of the file ───────────
+    const crypto = require('crypto');
+    const fs = require('fs');
+    const fileBuffer = fs.readFileSync(file.path);
+    const fingerprint = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+    // ─── Duplicate Check: look for same fingerprint in DB ─
+    const dupCheck = await db.query(
+      'SELECT id, title, creator_id FROM content WHERE fingerprint_hash = $1 AND status != $2',
+      [fingerprint, 'FAILED']
+    );
+
+    if (dupCheck.rows.length > 0) {
+      // Clean up the uploaded file
+      fs.unlinkSync(file.path);
+      const existing = dupCheck.rows[0];
+      return res.status(409).json({
+        error: `Duplicate detected! This file matches "${existing.title}" already on the platform.`,
+        existingContentId: existing.id,
+      });
+    }
+
+    // ─── Insert & Register ───────────────────────────────
     const contentId = uuidv4();
     await db.query(
       `INSERT INTO content (id, creator_id, title, description, category, content_type, price,
-        original_filename, file_size, mime_type, preview_url, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'PENDING')`,
+        original_filename, file_size, mime_type, preview_url, fingerprint_hash, status, registered_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'REGISTERED', NOW())`,
       [
         contentId, req.user.id, title, description, category, contentType,
         parseFloat(price), file.originalname, file.size, mimeType,
-        `/uploads/${file.filename}`,
+        `/uploads/${file.filename}`, fingerprint,
       ]
     );
 
-    // Create async job
+    // Also create a completed job record for tracking
     const jobId = uuidv4();
-    const job = await contentQueue.add('process-content', {
-      contentId,
-      filePath: file.path,
-      fileName: file.filename,
-      mimeType,
-      contentType,
-      creatorId: req.user.id,
-      creatorWallet: req.user.walletAddress,
-    }, { jobId });
-
-    // Track job
     await db.query(
-      `INSERT INTO jobs (id, content_id, bull_job_id, status)
-       VALUES ($1, $2, $3, 'queued')`,
-      [jobId, contentId, job.id]
+      `INSERT INTO jobs (id, content_id, bull_job_id, status, progress)
+       VALUES ($1, $2, $3, 'completed', 100)`,
+      [jobId, contentId, jobId]
     );
 
-    res.status(202).json({
-      message: 'Content uploaded and queued for processing',
+    console.log(`✅ Content "${title}" registered (fingerprint: ${fingerprint.substring(0, 16)}...)`);
+
+    res.status(201).json({
+      message: 'Content uploaded and registered successfully',
       contentId,
       jobId,
-      status: 'PENDING',
+      status: 'REGISTERED',
     });
   } catch (err) {
     console.error('Upload error:', err);
@@ -173,38 +201,13 @@ router.get('/', async (req, res) => {
     );
 
     res.json({
-      content: result.rows,
+      content: resolvePreviewUrls(result.rows, req),
       total: parseInt(countResult.rows[0].count),
       page: parseInt(page),
       pages: Math.ceil(countResult.rows[0].count / parseInt(limit)),
     });
   } catch (err) {
     console.error('Marketplace error:', err);
-    res.status(500).json({ error: 'Failed to fetch content' });
-  }
-});
-
-/**
- * GET /api/content/:id
- * Get single content details
- */
-router.get('/:id', async (req, res) => {
-  try {
-    const result = await db.query(
-      `SELECT c.*, u.name as creator_name, u.wallet_address as creator_wallet,
-              (SELECT COUNT(*) FROM licenses WHERE content_id = c.id) as license_count
-       FROM content c
-       JOIN users u ON u.id = c.creator_id
-       WHERE c.id = $1`,
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Content not found' });
-    }
-
-    res.json({ content: result.rows[0] });
-  } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
   }
 });
@@ -225,10 +228,68 @@ router.get('/creator/mine', authMiddleware, async (req, res) => {
       [req.user.id]
     );
 
-    res.json({ content: result.rows });
+    res.json({ content: resolvePreviewUrls(result.rows, req) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch content' });
   }
 });
 
+/**
+ * GET /api/content/:id
+ * Get single content details
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT c.*, u.name as creator_name, u.wallet_address as creator_wallet,
+              (SELECT COUNT(*) FROM licenses WHERE content_id = c.id) as license_count,
+              (SELECT MAX(granted_at) FROM licenses WHERE content_id = c.id) as last_purchased_at
+       FROM content c
+       JOIN users u ON u.id = c.creator_id
+       WHERE c.id = $1`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    res.json({ content: resolvePreviewUrls(result.rows, req)[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
+/**
+ * DELETE /api/content/:id
+ * Delete a piece of content (only creator)
+ */
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    // Verify ownership
+    const contentCheck = await db.query(
+      'SELECT creator_id FROM content WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (contentCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    if (contentCheck.rows[0].creator_id !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized to delete this content' });
+    }
+
+    // Delete content (cascade deletes licenses/earnings if setup, otherwise manual cleanup may be needed based on schema)
+    // Soft delete: Update status to 'DELETED' so it's removed from marketplace but retained in history
+    await db.query('UPDATE content SET status = $1 WHERE id = $2', ['DELETED', req.params.id]);
+
+    res.json({ message: 'Content deleted successfully' });
+  } catch (err) {
+    console.error('Delete error:', err);
+    res.status(500).json({ error: 'Failed to delete content' });
+  }
+});
+
 module.exports = router;
+// Triggering nodemon restart to clear cached PostgreSQL enum definitions

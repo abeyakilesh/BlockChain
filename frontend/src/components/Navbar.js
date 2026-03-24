@@ -12,7 +12,6 @@ const navLinks = [
   { name: 'Marketplace', href: '/marketplace' },
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Detect', href: '/detect' },
-  { name: 'Admin', href: '/admin', adminOnly: true },
 ];
 
 export default function Navbar({ animated = false, hideLinks = false }) {
@@ -25,7 +24,7 @@ export default function Navbar({ animated = false, hideLinks = false }) {
   const pathname = usePathname();
 
   const showLinks = !hideLinks && !animated;
-  const visibleLinks = navLinks.filter(l => !l.adminOnly || user?.role === 'admin');
+  const visibleLinks = navLinks;
 
   useEffect(() => setMounted(true), []);
 

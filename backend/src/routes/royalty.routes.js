@@ -29,13 +29,12 @@ router.get('/earnings', authMiddleware, async (req, res) => {
       [req.user.id]
     );
 
-    // Recent earnings (last 30 days, daily)
+    // Recent earnings (last 30 days, raw events)
     const recentResult = await db.query(
-      `SELECT DATE(created_at) as date, SUM(amount) as daily_amount
+      `SELECT created_at as timestamp, amount, source as type
        FROM earnings
        WHERE creator_id = $1 AND created_at > NOW() - INTERVAL '30 days'
-       GROUP BY DATE(created_at)
-       ORDER BY date`,
+       ORDER BY created_at ASC`,
       [req.user.id]
     );
 
@@ -47,12 +46,28 @@ router.get('/earnings', authMiddleware, async (req, res) => {
       [req.user.id]
     );
 
+    // Auto-generate Merkle tree for all creators so we can provide a valid proof to the client
+    const allEarnings = await db.query(
+      `SELECT u.wallet_address, COALESCE(SUM(e.amount), 0) as total_earned
+       FROM users u
+       JOIN earnings e ON e.creator_id = u.id
+       GROUP BY u.wallet_address
+       HAVING SUM(e.amount) > 0`
+    );
+    let proof = [];
+    if (allEarnings.rows.length > 0) {
+      await merkleService.generateMerkleRoot(allEarnings.rows);
+      const proofObj = merkleService.getProof(req.user.walletAddress);
+      if (proofObj) proof = proofObj.proof;
+    }
+
     res.json({
       totalEarnings: parseFloat(totalResult.rows[0].total),
       totalClaimed: parseFloat(claimedResult.rows[0].total_claimed),
       unclaimed: parseFloat(totalResult.rows[0].total) - parseFloat(claimedResult.rows[0].total_claimed),
       byContent: byContentResult.rows,
-      dailyEarnings: recentResult.rows,
+      transactions: recentResult.rows,
+      proof,
     });
   } catch (err) {
     console.error('Earnings error:', err);

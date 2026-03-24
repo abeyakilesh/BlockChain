@@ -6,6 +6,17 @@ const blockchainService = require('../services/blockchain.service');
 
 const router = express.Router();
 
+// Resolve relative /uploads/ paths to full URLs
+function resolveUrls(rows, req) {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  return rows.map(row => {
+    if (row.preview_url && row.preview_url.startsWith('/uploads/')) {
+      row.preview_url = `${baseUrl}${row.preview_url}`;
+    }
+    return row;
+  });
+}
+
 /**
  * POST /api/license/purchase
  * License content — performs gasless transaction via account abstraction
@@ -99,7 +110,7 @@ router.get('/my', authMiddleware, async (req, res) => {
       [req.user.id]
     );
 
-    res.json({ licenses: result.rows });
+    res.json({ licenses: resolveUrls(result.rows, req) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch licenses' });
   }

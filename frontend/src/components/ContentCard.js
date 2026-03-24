@@ -1,6 +1,20 @@
 'use client';
 
-import { Image as ImageIcon, Music, Video, Play, Ticket, CheckCircle2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Image as ImageIcon, Music, Video, Play, Ticket, CheckCircle2, AlertCircle } from 'lucide-react';
+
+// ─── Helper: check if URL is a video file ─────────────────
+function isVideoUrl(url) {
+  if (!url) return false;
+  const ext = url.split('?')[0].split('.').pop().toLowerCase();
+  return ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext);
+}
+
+function isAudioUrl(url) {
+  if (!url) return false;
+  const ext = url.split('?')[0].split('.').pop().toLowerCase();
+  return ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a'].includes(ext);
+}
 
 export default function ContentCard({ item, showCreator = true }) {
   const type = item.content_type || item.category || 'image';
@@ -55,10 +69,11 @@ export default function ContentCard({ item, showCreator = true }) {
 /* ─── Image Thumbnail ───────────────────────────── */
 function ImageThumbnail({ item }) {
   const src = item.cover_url || item.preview_url;
+  const [error, setError] = useState(false);
 
-  if (src) {
+  if (src && !error && !isVideoUrl(src) && !isAudioUrl(src)) {
     return (
-      <img src={src} alt={item.title} loading="lazy"
+      <img src={src} alt={item.title} loading="lazy" onError={() => setError(true)}
            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />
     );
   }
@@ -74,11 +89,53 @@ function ImageThumbnail({ item }) {
 /* ─── Video Thumbnail ───────────────────────────── */
 function VideoThumbnail({ item }) {
   const src = item.cover_url || item.preview_url;
+  const [thumbnail, setThumbnail] = useState(null);
+  const [error, setError] = useState(false);
+  const videoRef = useRef(null);
+
+  // If src is a video file, extract a frame using canvas
+  useEffect(() => {
+    if (!src || !isVideoUrl(src)) return;
+
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.preload = 'metadata';
+
+    video.onloadeddata = () => {
+      video.currentTime = 1; // Seek to 1 second
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setThumbnail(dataUrl);
+      } catch (e) {
+        // CORS or other error — show fallback
+        setError(true);
+      }
+    };
+
+    video.onerror = () => setError(true);
+    video.src = src;
+
+    return () => {
+      video.src = '';
+      video.load();
+    };
+  }, [src]);
+
+  const imgSrc = thumbnail || (src && !isVideoUrl(src) ? src : null);
 
   return (
     <div className="w-full h-full relative">
-      {src ? (
-        <img src={src} alt={item.title} loading="lazy"
+      {imgSrc && !error ? (
+        <img src={imgSrc} alt={item.title} loading="lazy" onError={() => setError(true)}
              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
@@ -104,11 +161,13 @@ function VideoThumbnail({ item }) {
 /* ─── Audio Thumbnail ───────────────────────────── */
 function AudioThumbnail({ item }) {
   const src = item.cover_url || item.preview_url;
+  const hasImage = src && !isAudioUrl(src) && !isVideoUrl(src);
+  const [error, setError] = useState(false);
 
-  if (src) {
+  if (hasImage && !error) {
     return (
       <div className="w-full h-full relative">
-        <img src={src} alt={item.title} loading="lazy"
+        <img src={src} alt={item.title} loading="lazy" onError={() => setError(true)}
              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" />
         {/* Music overlay */}
         <div className="absolute inset-0 bg-black/20 flex items-end p-4">
@@ -136,6 +195,7 @@ function AudioThumbnail({ item }) {
   return (
     <div className={`w-full h-full bg-gradient-to-br ${gradient} flex flex-col items-center justify-center p-6`}>
       <Music className="w-10 h-10 text-white/80 mb-3" strokeWidth={1.5} />
+      <p className="text-white/70 text-xs font-medium text-center line-clamp-1 mb-2 px-4">{item.title}</p>
       <div className="flex items-end gap-[3px]">
         {[35, 60, 45, 75, 55, 40, 70, 50, 62, 42, 68, 38, 58, 48].map((h, i) => (
           <div key={i} className="w-1 rounded-full bg-white/50"

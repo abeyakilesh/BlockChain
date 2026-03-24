@@ -5,13 +5,6 @@ import api from '@/lib/api';
 
 const AuthContext = createContext(null);
 
-// Demo users for when backend is unavailable
-const DEMO_USERS = {
-  'alex@creatorchain.io': { id: 'demo-creator-1', email: 'alex@creatorchain.io', name: 'Alex Chen', walletAddress: '0xDemoCreator...', role: 'creator' },
-  'admin@creatorchain.io': { id: 'demo-admin-1', email: 'admin@creatorchain.io', name: 'Admin', walletAddress: '0xDemoAdmin...', role: 'admin' },
-  'buyer@creatorchain.io': { id: 'demo-buyer-1', email: 'buyer@creatorchain.io', name: 'Sarah Kim', walletAddress: '0xDemoBuyer...', role: 'creator' },
-};
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,38 +28,15 @@ export function AuthProvider({ children }) {
   };
 
   const login = useCallback(async (email) => {
-    try {
-      const data = await api.login(email);
-      persistUser(data.user, data.token);
-      return data;
-    } catch (err) {
-      // Fallback: use demo user if backend is down
-      const demo = DEMO_USERS[email.toLowerCase()];
-      if (demo) {
-        persistUser(demo, 'demo-token-' + demo.role);
-        return { user: demo, token: 'demo-token-' + demo.role };
-      }
-      throw err;
-    }
+    const data = await api.login(email);
+    persistUser(data.user, data.token);
+    return data;
   }, []);
 
   const register = useCallback(async (email, name, role) => {
-    try {
-      const data = await api.register(email, name, role);
-      persistUser(data.user, data.token);
-      return data;
-    } catch (err) {
-      // Fallback: create a local demo user
-      const demoUser = {
-        id: 'demo-' + Date.now(),
-        email,
-        name,
-        walletAddress: '0x' + Math.random().toString(16).slice(2, 14) + '...',
-        role,
-      };
-      persistUser(demoUser, 'demo-token-' + role);
-      return { user: demoUser, token: 'demo-token-' + role };
-    }
+    const data = await api.register(email, name, role);
+    persistUser(data.user, data.token);
+    return data;
   }, []);
 
   const logout = useCallback(() => {

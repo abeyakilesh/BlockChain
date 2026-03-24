@@ -1,131 +1,247 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import { TrendingUp, ArrowUpRight, Activity, Upload } from 'lucide-react';
 
-export default function EarningsChart({ dailyEarnings = [] }) {
-  const canvasRef = useRef(null);
+// ─── Data Processing ──────────────────────────────────────
+function generateTimeSeriesData(transactions = [], range) {
+  const now = new Date();
+  
+  // Create an array of buckets depending on the range
+  const buckets = [];
+  let formatLabel, timeThreshold, numBuckets, stepMs;
 
-  useEffect(() => {
-    if (!canvasRef.current || dailyEarnings.length === 0) return;
+  if (range === '24H') {
+    numBuckets = 24;
+    stepMs = 60 * 60 * 1000; // 1 hour
+    timeThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    formatLabel = (date) => date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+  } else if (range === '7D') {
+    numBuckets = 7;
+    stepMs = 24 * 60 * 60 * 1000; // 1 day
+    timeThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    formatLabel = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } else { // 30D
+    numBuckets = 30;
+    stepMs = 24 * 60 * 60 * 1000; // 1 day
+    timeThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    formatLabel = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    const width = rect.width;
-    const height = rect.height;
-    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
-    const chartW = width - padding.left - padding.right;
-    const chartH = height - padding.top - padding.bottom;
-
-    const amounts = dailyEarnings.map(d => parseFloat(d.daily_amount));
-    const maxAmount = Math.max(...amounts, 0.01);
-
-    ctx.clearRect(0, 0, width, height);
-
-    // Detect dark mode
-    const isDark = document.documentElement.classList.contains('dark');
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-    const labelColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
-    const lineColor = '#6366F1';
-    const fillStart = isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)';
-    const fillEnd = 'rgba(99,102,241,0.0)';
-
-    // Grid lines
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = padding.top + (chartH / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
-      ctx.stroke();
-
-      const val = (maxAmount - (maxAmount / 4) * i).toFixed(3);
-      ctx.fillStyle = labelColor;
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(val, padding.left - 8, y + 4);
-    }
-
-    // Area fill
-    const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-    gradient.addColorStop(0, fillStart);
-    gradient.addColorStop(1, fillEnd);
-
-    ctx.beginPath();
-    dailyEarnings.forEach((d, i) => {
-      const x = padding.left + (i / (dailyEarnings.length - 1 || 1)) * chartW;
-      const y = padding.top + chartH - (parseFloat(d.daily_amount) / maxAmount) * chartH;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+  // Initialize empty buckets
+  let currentStart = new Date(timeThreshold);
+  for (let i = 0; i < numBuckets; i++) {
+    currentStart = new Date(currentStart.getTime() + stepMs);
+    buckets.push({
+      timestamp: currentStart.getTime(),
+      label: formatLabel(currentStart),
+      amount: 0,
+      transactions: 0
     });
+  }
 
-    const lastX = padding.left + chartW;
-    ctx.lineTo(lastX, padding.top + chartH);
-    ctx.lineTo(padding.left, padding.top + chartH);
-    ctx.closePath();
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Line
-    ctx.beginPath();
-    dailyEarnings.forEach((d, i) => {
-      const x = padding.left + (i / (dailyEarnings.length - 1 || 1)) * chartW;
-      const y = padding.top + chartH - (parseFloat(d.daily_amount) / maxAmount) * chartH;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+  // Aggregate genuine backend transactions into buckets
+  if (transactions && transactions.length > 0) {
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.timestamp);
+      if (txDate > timeThreshold) {
+        // Find the closest bucket
+        const bucketIndex = buckets.findIndex(b => b.timestamp >= txDate.getTime());
+        if (bucketIndex !== -1) {
+          buckets[bucketIndex].amount += parseFloat(tx.amount || 0);
+          buckets[bucketIndex].transactions += 1;
+        } else if (buckets.length > 0) {
+          // If perfectly matching now, add to last bucket
+          buckets[buckets.length - 1].amount += parseFloat(tx.amount || 0);
+          buckets[buckets.length - 1].transactions += 1;
+        }
+      }
     });
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  }
 
-    // Dots
-    dailyEarnings.forEach((d, i) => {
-      const x = padding.left + (i / (dailyEarnings.length - 1 || 1)) * chartW;
-      const y = padding.top + chartH - (parseFloat(d.daily_amount) / maxAmount) * chartH;
+  // Fix precision
+  return buckets.map(b => ({
+    ...b,
+    amount: parseFloat(b.amount.toFixed(4))
+  }));
+}
 
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = lineColor;
-      ctx.fill();
+// ─── Custom Tooltip ───────────────────────────────────────
+function ChartTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  const dateStr = new Date(d.timestamp).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
+  const timeStr = new Date(d.timestamp).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit'
+  });
 
-      // X-labels
-      ctx.fillStyle = labelColor;
-      ctx.font = '10px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      const dateLabel = new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      ctx.fillText(dateLabel, x, height - padding.bottom + 20);
-    });
+  return (
+    <div className="bg-gray-900 dark:bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 shadow-2xl">
+      <p className="text-[11px] text-gray-400 mb-1.5">{dateStr}, {timeStr}</p>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-lg font-bold text-white">{d.amount.toFixed(4)}</span>
+        <span className="text-xs text-gray-400">MATIC</span>
+      </div>
+      <div className="flex items-center gap-1 mt-1.5 text-[11px] text-gray-500">
+        <Activity className="w-3 h-3" /> {d.transactions} transaction{d.transactions !== 1 ? 's' : ''}
+      </div>
+    </div>
+  );
+}
 
-  }, [dailyEarnings]);
+// ─── Custom Active Dot (glowing) ──────────────────────────
+function GlowDot(props) {
+  const { cx, cy } = props;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={10} fill="rgba(59,130,246,0.2)" />
+      <circle cx={cx} cy={cy} r={6} fill="rgba(59,130,246,0.3)" />
+      <circle cx={cx} cy={cy} r={3.5} fill="#3B82F6" stroke="#fff" strokeWidth={2} />
+    </g>
+  );
+}
 
-  if (dailyEarnings.length === 0) {
+// ─── Main Component ───────────────────────────────────────
+export default function EarningsChart({ transactions = [] }) {
+  const [range, setRange] = useState('7D');
+  const ranges = ['24H', '7D', '30D'];
+
+  // Process ONLY REAL backend transactions based on selected range
+  const chartData = useMemo(() => generateTimeSeriesData(transactions, range), [transactions, range]);
+
+  // Total metric calculations
+  const totalEarnings = chartData.reduce((s, d) => s + d.amount, 0);
+  const totalTx = chartData.reduce((s, d) => s + d.transactions, 0);
+  const avgPrice = totalTx > 0 ? totalEarnings / totalTx : 0;
+  
+  // Strict rule: If ZERO real transactions from backend globally, show empty state
+  const isEmpty = !transactions || transactions.length === 0;
+
+  // ─── Empty State (No Mock Data Ever) ──────────────────
+  if (isEmpty) {
     return (
-      <div className="card p-8 text-center">
-        <BarChart3 className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-        <p className="text-gray-400 dark:text-gray-500 text-sm">No earnings data yet</p>
+      <div className="card p-10 text-center flex flex-col items-center justify-center min-h-[350px]">
+        <div className="w-14 h-14 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-5">
+          <Upload className="w-7 h-7 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+        </div>
+        <p className="text-gray-900 dark:text-white font-semibold text-lg mb-2">No earnings data yet</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+          Upload and verify your content on the blockchain to start selling commercial licenses and earning MATIC.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="card p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Earnings Overview</h3>
-        <span className="text-xs text-gray-400">MATIC</span>
+      {/* ─── Header: Metrics + Range Filters ────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary-500" /> Earnings Analytics
+          </h3>
+          {/* Secondary Metrics */}
+          <div className="flex items-center gap-5 mt-3">
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {totalEarnings.toFixed(4)}
+                <span className="text-sm font-normal text-gray-400 ml-1">MATIC</span>
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                <ArrowUpRight className="w-3 h-3 text-green-500" /> Earnings ({range})
+              </p>
+            </div>
+            <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+            <div>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{totalTx}</p>
+              <p className="text-[11px] text-gray-400">Transactions</p>
+            </div>
+            <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block" />
+            <div className="hidden sm:block">
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">{avgPrice.toFixed(4)}</p>
+              <p className="text-[11px] text-gray-400">Avg per sale</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Range Filters */}
+        <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg self-start">
+          {ranges.map(r => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                range === r
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
       </div>
-      <canvas
-        ref={canvasRef}
-        className="w-full"
-        style={{ height: '200px' }}
-      />
+
+      {/* ─── Chart ───────────────────────────────────────── */}
+      <div className="h-[280px] -ml-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.25} />
+                <stop offset="50%" stopColor="#3B82F6" stopOpacity={0.08} />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#3B82F6" />
+                <stop offset="100%" stopColor="#8B5CF6" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="currentColor"
+              className="text-gray-100 dark:text-gray-800"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              interval="preserveStartEnd"
+              dy={8}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              tickFormatter={v => v.toFixed(2)}
+              width={50}
+            />
+            <Tooltip
+              content={<ChartTooltip />}
+              cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '4 4' }}
+            />
+            <Area
+              type="monotone"
+              dataKey="amount"
+              stroke="url(#lineGradient)"
+              strokeWidth={2.5}
+              fill="url(#earningsGradient)"
+              activeDot={<GlowDot />}
+              dot={false}
+              animationDuration={1200}
+              animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

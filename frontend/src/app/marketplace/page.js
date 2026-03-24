@@ -7,7 +7,6 @@ import ContentCard from '@/components/ContentCard';
 import { CardSkeleton } from '@/components/SkeletonLoader';
 import { Search, Image as ImageIcon, Video, Music, LayoutGrid } from 'lucide-react';
 import api from '@/lib/api';
-import demoContent from '@/lib/demoContent';
 
 
 const categories = [
@@ -29,38 +28,9 @@ export default function MarketplacePage() {
       setLoading(true);
       try {
         const data = await api.getMarketplace({ search, category, sort });
-        const apiContent = (data.content || [])
-          .filter(c => c.cover_url || c.preview_url); // Only keep API items with valid covers
-        // Merge: demo items fill in behind any API items with covers
-        const merged = [...apiContent, ...demoContent];
-
-        // De-duplicate by title (case-insensitive) to avoid similar names
-        const seen = new Set();
-        const unique = merged.filter(c => {
-          const key = c.title.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        // Local filters
-        let filtered = unique;
-        if (category) filtered = filtered.filter(c => (c.content_type || c.category) === category);
-        if (search) filtered = filtered.filter(c => c.title.toLowerCase().includes(search.toLowerCase()) || c.description?.toLowerCase().includes(search.toLowerCase()));
-        if (sort === 'price_low') filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-        else if (sort === 'price_high') filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-        else if (sort === 'popular') filtered.sort((a, b) => (b.license_count || 0) - (a.license_count || 0));
-
-        setContent(filtered);
+        setContent(data.content || []);
       } catch {
-        // Fallback to demo
-        let filtered = [...demoContent];
-        if (category) filtered = filtered.filter(c => c.content_type === category);
-        if (search) filtered = filtered.filter(c => c.title.toLowerCase().includes(search.toLowerCase()) || c.description?.toLowerCase().includes(search.toLowerCase()));
-        if (sort === 'price_low') filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-        else if (sort === 'price_high') filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-        else if (sort === 'popular') filtered.sort((a, b) => (b.license_count || 0) - (a.license_count || 0));
-        setContent(filtered);
+        setContent([]);
       } finally {
         setLoading(false);
       }

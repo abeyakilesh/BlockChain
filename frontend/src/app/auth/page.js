@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import NetBackground from '@/components/NetBackground';
 import { useAuth } from '@/context/AuthContext';
-import { Hexagon, Lock, ArrowRight, Shield, Palette } from 'lucide-react';
+import { Hexagon, Lock, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AuthPage() {
@@ -14,7 +14,6 @@ export default function AuthPage() {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('creator');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -23,7 +22,7 @@ export default function AuthPage() {
 
     try {
       if (mode === 'register') {
-        await register(email, name, role);
+        await register(email, name, 'creator');
         toast.success('Account created successfully!');
       } else {
         await login(email);
@@ -37,19 +36,7 @@ export default function AuthPage() {
     }
   };
 
-  const handleDemoLogin = (demoRole) => {
-    if (demoRole === 'admin') {
-      setEmail('admin@creatorchain.io');
-      setName('Admin');
-      setRole('admin');
-    } else {
-      setEmail('alex@creatorchain.io');
-      setName('Alex Chen');
-      setRole('creator');
-    }
-    setMode('login');
-    toast('Demo credentials loaded. Click Sign In.');
-  };
+
 
   return (
     <main className="page-container">
@@ -134,26 +121,7 @@ export default function AuthPage() {
                        className="input-field py-3 text-base" placeholder="you@example.com" required />
               </div>
 
-              <div className={`transition-all duration-300 ${mode === 'register' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">Account Type</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { value: 'creator', label: 'Creator', desc: 'Create & buy content', Icon: Palette },
-                    { value: 'admin', label: 'Admin', desc: 'Monitor platform', Icon: Shield },
-                  ].map((opt) => (
-                    <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
-                            className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                              role === opt.value
-                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                            }`}>
-                      <opt.Icon className={`w-5 h-5 mb-2 ${role === opt.value ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`} />
-                      <div className={`font-semibold text-sm ${role === opt.value ? 'text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300'}`}>{opt.label}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               <button type="submit" disabled={loading}
                       className="btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2 mt-2 transition-all duration-200">
@@ -171,24 +139,7 @@ export default function AuthPage() {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-8">
-              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-              <span className="text-xs text-gray-400 font-medium">Quick Demo Login</span>
-              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            </div>
 
-            {/* Demo Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => handleDemoLogin('creator')}
-                      className="btn-secondary py-3 text-sm flex items-center justify-center gap-2">
-                <Palette className="w-4 h-4 text-primary-500" /> Creator
-              </button>
-              <button type="button" onClick={() => handleDemoLogin('admin')}
-                      className="btn-secondary py-3 text-sm flex items-center justify-center gap-2">
-                <Shield className="w-4 h-4 text-amber-500" /> Admin
-              </button>
-            </div>
 
             <p className="text-center text-xs text-gray-400 mt-8 flex items-center justify-center gap-1.5">
               <Lock className="w-3 h-3" /> An embedded wallet (ERC-4337) is provisioned automatically.
