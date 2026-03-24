@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import NetBackground from '@/components/NetBackground';
+import ParticleBackground from '@/components/ParticleBackground';
 import { Brain, Link2, DollarSign, Shield, Zap, Search, Upload, ScanSearch, HardDrive, FileCheck, Ticket, Coins, XCircle, Skull, BarChart3, Building2 } from 'lucide-react';
 
 const features = [
@@ -62,21 +63,25 @@ export default function Landing() {
       {/* ═══ Hero ═══ */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <NetBackground />
-        <div className="relative content-wrapper text-center py-32">
+        <ParticleBackground />
+        <div className="relative content-wrapper text-center py-32" style={{ zIndex: 2 }}>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-tight mb-6 animate-slide-up">
-            <span className="text-gray-900 dark:text-white">Own Your</span>
+            <span className="text-gray-900 dark:text-white drop-shadow-sm">Own Your</span>
             <br />
-            <span className="text-primary-600 dark:text-primary-400">Digital Legacy</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-purple-500 to-primary-600 dark:from-primary-400 dark:via-purple-300 dark:to-primary-400"
+                  style={{ filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.3))' }}>
+              Digital Legacy
+            </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed">
+          <p className="text-lg md:text-xl text-gray-700 dark:text-gray-400 max-w-2xl mx-auto mb-10 animate-fade-in leading-relaxed font-medium">
             AI-verified content authenticity. Blockchain-notarized ownership.
-            Automated royalty distribution. The future of digital rights management.
+            Automated royalty distribution. The future of digital rights.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center animate-slide-up">
-            <Link href="/auth" className="btn-primary text-base px-8 py-3.5">
+            <Link href="/auth" className="btn-primary text-base px-8 py-3.5 shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-shadow">
               Start Creating →
             </Link>
             <Link href="/marketplace" className="btn-secondary text-base px-8 py-3.5">
@@ -87,9 +92,9 @@ export default function Landing() {
           {/* Stats bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 max-w-3xl mx-auto">
             {stats.map((stat, i) => (
-              <div key={i} className="card p-4 text-center animate-fade-in">
+              <div key={i} className="card p-4 text-center animate-fade-in backdrop-blur-sm">
                 <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">{stat.value}</div>
-                <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{stat.label}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
