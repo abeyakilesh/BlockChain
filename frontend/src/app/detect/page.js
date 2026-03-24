@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
+import { UploadCloud, File as FileIcon, XCircle, CheckCircle } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -54,10 +55,10 @@ export default function DetectPage() {
             Live AI Detection Engine
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
             Verify Content <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple">Originality</span>
           </h1>
-          <p className="text-lg text-white/50 mb-10 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 dark:text-white/50 mb-10 max-w-2xl mx-auto">
             Upload any image, audio, or video. Our AI will extract its perceptual fingerprint and compare it against the immutable blockchain registry to detect unauthorized copies.
           </p>
 
@@ -67,24 +68,22 @@ export default function DetectPage() {
             
             <form onSubmit={handleScan} className="relative z-10 flex flex-col items-center">
               <label className={`w-full h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300
-                ${file ? 'border-neon-cyan/50 bg-neon-cyan/5' : 'border-white/10 hover:border-white/30 hover:bg-white/[0.02]'}`}>
+                ${file ? 'border-neon-cyan/50 bg-neon-cyan/5' : 'border-black/10 dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
                 {file ? (
                   <div className="text-center px-4">
                     <div className="w-16 h-16 mx-auto mb-4 bg-neon-cyan/20 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📄</span>
+                      <FileIcon className="w-8 h-8 text-neon-cyan" strokeWidth={1.5} />
                     </div>
-                    <p className="text-white font-medium text-lg truncate mb-1">{file.name}</p>
-                    <p className="text-white/40 text-sm">Ready to scan ({(file.size/1024/1024).toFixed(2)} MB)</p>
+                    <p className="text-slate-900 dark:text-white font-medium text-lg truncate mb-1">{file.name}</p>
+                    <p className="text-slate-500 dark:text-white/40 text-sm">Ready to scan ({(file.size/1024/1024).toFixed(2)} MB)</p>
                   </div>
                 ) : (
                   <div className="text-center px-4">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                      <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
+                    <div className="w-16 h-16 mx-auto mb-4 bg-black/5 dark:bg-white/5 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.05)] dark:shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                      <UploadCloud className="w-8 h-8 text-slate-400 dark:text-white/40" strokeWidth={1.5} />
                     </div>
-                    <p className="text-white font-medium text-lg mb-1">Drop content here</p>
-                    <p className="text-white/40 text-sm">Supports JPG, PNG, MP3, WAV, MP4</p>
+                    <p className="text-slate-900 dark:text-white font-medium text-lg mb-1">Drop content here</p>
+                    <p className="text-slate-500 dark:text-white/40 text-sm">Supports JPG, PNG, MP3, WAV, MP4</p>
                   </div>
                 )}
                 <input type="file" className="hidden" onChange={(e) => {
@@ -126,16 +125,16 @@ export default function DetectPage() {
               <div className="flex items-start gap-4 mb-6">
                 <div className={`p-3 rounded-xl ${result.matchFound ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                   {result.matchFound ? (
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <XCircle className="w-8 h-8" />
                   ) : (
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <CheckCircle className="w-8 h-8" />
                   )}
                 </div>
                 <div>
-                  <h3 className={`text-xl font-bold ${result.matchFound ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  <h3 className={`text-xl font-bold ${result.matchFound ? 'text-amber-500 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                     {result.matchFound ? 'Match Found in Registry' : 'No Matches Found'}
                   </h3>
-                  <p className="text-sm text-white/60 mt-1">
+                  <p className="text-sm text-slate-600 dark:text-white/60 mt-1">
                     {result.matchFound 
                       ? 'This content closely matches an existing registered asset on CreatorChain.'
                       : 'This content appears to be original and does not exist in our blockchain registry.'}
@@ -144,33 +143,33 @@ export default function DetectPage() {
               </div>
 
               {result.matchFound && result.content && (
-                <div className="bg-dark-900 rounded-xl p-5 border border-white/5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <span className="text-white/40 text-sm">Similarity Score</span>
+                <div className="bg-slate-100 dark:bg-dark-900 rounded-xl p-5 border border-black/5 dark:border-white/5 space-y-4">
+                  <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-3">
+                    <span className="text-slate-500 dark:text-white/40 text-sm">Similarity Score</span>
                     <div className="flex items-center gap-2">
-                      <div className="w-32 h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div className="w-32 h-2 bg-black/10 dark:bg-white/5 rounded-full overflow-hidden">
                         <div className="h-full bg-amber-500" style={{ width: `${result.similarity}%` }} />
                       </div>
-                      <span className="text-amber-500 font-bold">{result.similarity}%</span>
+                      <span className="text-amber-600 dark:text-amber-500 font-bold">{result.similarity}%</span>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                     <div>
-                      <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Original Title</p>
-                      <Link href={`/content/${result.content.id}`} className="text-white font-medium hover:text-neon-cyan transition-colors">
+                      <p className="text-slate-500 dark:text-white/40 text-xs uppercase tracking-wider mb-1">Original Title</p>
+                      <Link href={`/content/${result.content.id}`} className="text-slate-900 dark:text-white font-medium hover:text-neon-cyan transition-colors">
                         {result.content.title}
                       </Link>
                     </div>
                     <div>
-                      <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Registered Owner</p>
-                      <p className="text-white font-medium">{result.content.creator_name}</p>
+                      <p className="text-slate-500 dark:text-white/40 text-xs uppercase tracking-wider mb-1">Registered Owner</p>
+                      <p className="text-slate-900 dark:text-white font-medium">{result.content.creator_name}</p>
                     </div>
                   </div>
                   
                   <div className="pt-3">
-                     <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Blockchain ID</p>
-                     <p className="font-mono text-xs text-white/60 break-all">{result.content.tx_hash}</p>
+                     <p className="text-slate-500 dark:text-white/40 text-xs uppercase tracking-wider mb-1">Blockchain ID</p>
+                     <p className="font-mono text-xs text-slate-600 dark:text-white/60 break-all">{result.content.tx_hash}</p>
                   </div>
                 </div>
               )}

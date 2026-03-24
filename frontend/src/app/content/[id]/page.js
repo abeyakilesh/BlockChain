@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import { DetailSkeleton } from '@/components/SkeletonLoader';
 import { useAuth } from '@/context/AuthContext';
+import { Lock, Music, Video, Image as ImageIcon, Link2, FileCheck } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -32,7 +34,7 @@ export default function ContentDetailPage({ params }) {
 
   const handlePurchase = async () => {
     if (!user) {
-      toast('Please log in to purchase licenses', { icon: '🔒' });
+      toast('Please log in to purchase licenses', { icon: <Lock className="w-4 h-4 text-neon-cyan" /> });
       router.push('/auth');
       return;
     }
@@ -62,8 +64,8 @@ export default function ContentDetailPage({ params }) {
     return (
       <main className="page-container">
         <Navbar />
-        <div className="flex justify-center items-center h-screen">
-          <div className="w-8 h-8 rounded-full border-2 border-neon-cyan border-t-transparent animate-spin" />
+        <div className="pt-24 pb-16 content-wrapper">
+          <DetailSkeleton />
         </div>
       </main>
     );
@@ -75,7 +77,7 @@ export default function ContentDetailPage({ params }) {
     <main className="page-container">
       <Navbar />
 
-      <div className="pt-24 pb-16 content-wrapper">
+      <div className="pt-24 pb-16 content-wrapper animate-fade-in">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left Column - Preview */}
           <div className="space-y-6">
@@ -84,36 +86,36 @@ export default function ContentDetailPage({ params }) {
                               content.category === 'video' ? 'from-amber-500 to-red-600' : 
                               'from-cyan-500 to-blue-600'} 
                             flex items-center justify-center relative overflow-hidden group shadow-2xl shadow-black/50`}>
-              <span className="text-9xl opacity-50 group-hover:scale-110 transition-transform duration-700">
-                {content.category === 'audio' ? '🎵' : content.category === 'video' ? '🎬' : '🖼️'}
-              </span>
+              <div className="opacity-50 group-hover:scale-110 transition-transform duration-700">
+                {content.category === 'audio' ? <Music className="w-32 h-32 text-white" strokeWidth={1.5} /> : content.category === 'video' ? <Video className="w-32 h-32 text-white" strokeWidth={1.5} /> : <ImageIcon className="w-32 h-32 text-white" strokeWidth={1.5} />}
+              </div>
               <div className="absolute inset-0 bg-black/20" />
             </div>
             
             <div className="glass-card p-6">
-              <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                <span className="text-neon-cyan">🔗</span> Blockchain Proof
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <Link2 className="w-5 h-5 text-neon-cyan" /> Blockchain Proof
               </h3>
               <div className="space-y-3 font-mono text-xs">
-                <div className="flex justify-between items-center bg-black/20 p-3 rounded-lg border border-white/5">
-                  <span className="text-white/40">Network</span>
-                  <span className="text-white/80">Polygon Amoy</span>
+                <div className="flex justify-between items-center bg-black/5 dark:bg-black/20 p-3 rounded-lg border border-black/5 dark:border-white/5">
+                  <span className="text-slate-500 dark:text-white/40">Network</span>
+                  <span className="text-slate-800 dark:text-white/80">Polygon Amoy</span>
                 </div>
-                <div className="flex justify-between items-center bg-black/20 p-3 rounded-lg border border-white/5">
-                  <span className="text-white/40">Block</span>
-                  <span className="text-white/80">{content.block_number || 'Pending...'}</span>
+                <div className="flex justify-between items-center bg-black/5 dark:bg-black/20 p-3 rounded-lg border border-black/5 dark:border-white/5">
+                  <span className="text-slate-500 dark:text-white/40">Block</span>
+                  <span className="text-slate-800 dark:text-white/80">{content.block_number || 'Pending...'}</span>
                 </div>
-                <div className="flex flex-col gap-1 bg-black/20 p-3 rounded-lg border border-white/5">
-                  <span className="text-white/40">TX Hash</span>
-                  <span className="text-white/80 break-all">{content.tx_hash || 'Pending...'}</span>
+                <div className="flex flex-col gap-1 bg-black/5 dark:bg-black/20 p-3 rounded-lg border border-black/5 dark:border-white/5">
+                  <span className="text-slate-500 dark:text-white/40">TX Hash</span>
+                  <span className="text-slate-800 dark:text-white/80 break-all">{content.tx_hash || 'Pending...'}</span>
                 </div>
-                <div className="flex flex-col gap-1 bg-black/20 p-3 rounded-lg border border-white/5">
-                  <span className="text-white/40">IPFS CID</span>
-                  <span className="text-white/80 break-all">{content.ipfs_cid || 'Pending...'}</span>
+                <div className="flex flex-col gap-1 bg-black/5 dark:bg-black/20 p-3 rounded-lg border border-black/5 dark:border-white/5">
+                  <span className="text-slate-500 dark:text-white/40">IPFS CID</span>
+                  <span className="text-slate-800 dark:text-white/80 break-all">{content.ipfs_cid || 'Pending...'}</span>
                 </div>
-                <div className="flex flex-col gap-1 bg-black/20 p-3 rounded-lg border border-white/5">
-                  <span className="text-white/40">AI Fingerprint</span>
-                  <span className="text-white/80 break-all">{content.fingerprint_hash || 'Pending...'}</span>
+                <div className="flex flex-col gap-1 bg-black/5 dark:bg-black/20 p-3 rounded-lg border border-black/5 dark:border-white/5">
+                  <span className="text-slate-500 dark:text-white/40">AI Fingerprint</span>
+                  <span className="text-slate-800 dark:text-white/80 break-all">{content.fingerprint_hash || 'Pending...'}</span>
                 </div>
               </div>
             </div>
@@ -123,28 +125,28 @@ export default function ContentDetailPage({ params }) {
           <div>
             <div className="mb-4">
               <span className="badge-success mb-3 block w-max">AI Verified & Notarized</span>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">{content.title}</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-2">{content.title}</h1>
               <div className="flex items-center gap-3 text-sm">
-                <span className="px-3 py-1 rounded-full bg-white/5 text-white/70 capitalize">{content.category}</span>
-                <span className="text-white/30">•</span>
-                <span className="text-white/50">Created by <span className="text-neon-cyan">{content.creator_name}</span></span>
+                <span className="px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 text-slate-600 dark:text-white/70 capitalize">{content.category}</span>
+                <span className="text-slate-400 dark:text-white/30">•</span>
+                <span className="text-slate-500 dark:text-white/50">Created by <span className="text-neon-cyan font-medium">{content.creator_name}</span></span>
               </div>
             </div>
 
-            <p className="text-white/60 leading-relaxed mb-8">{content.description || 'No description provided.'}</p>
+            <p className="text-slate-600 dark:text-white/60 leading-relaxed mb-8">{content.description || 'No description provided.'}</p>
 
             <div className="glass-card p-6 border-neon-cyan/20 mb-8">
               <div className="flex justify-between items-end mb-6">
                 <div>
-                  <p className="text-white/40 text-sm mb-1 uppercase tracking-wider font-semibold">License Price</p>
+                  <p className="text-slate-500 dark:text-white/40 text-sm mb-1 uppercase tracking-wider font-semibold">License Price</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-bold neon-text">{content.price}</span>
-                    <span className="text-white/50 font-medium">MATIC</span>
+                    <span className="text-slate-500 dark:text-white/50 font-medium">MATIC</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-white/40 text-xs mb-1">Total Sales</p>
-                  <p className="text-white font-semibold">{content.license_count || 0}</p>
+                  <p className="text-slate-500 dark:text-white/40 text-xs mb-1">Total Sales</p>
+                  <p className="text-slate-900 dark:text-white font-semibold">{content.license_count || 0}</p>
                 </div>
               </div>
 
@@ -172,11 +174,11 @@ export default function ContentDetailPage({ params }) {
               )}
             </div>
 
-            <div className="bg-dark-900 border border-white/5 rounded-2xl p-6">
-              <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                <span className="text-amber-400">📜</span> Proof of Authenticity
+            <div className="bg-slate-100 dark:bg-dark-900 border border-black/5 dark:border-white/5 rounded-2xl p-6">
+              <h4 className="font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-amber-500" /> Proof of Authenticity
               </h4>
-              <p className="text-sm text-white/50 mb-4 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-white/50 mb-4 leading-relaxed">
                 This content has been cryptographically signed and fingerprinted by our AI. The exact perceptual hash is stored on the Polygon blockchain, rendering the registration immutable.
               </p>
               <button 

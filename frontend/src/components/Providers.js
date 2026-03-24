@@ -2,31 +2,27 @@
 
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/context/AuthContext';
+import { ThemeProvider } from 'next-themes';
 
 export default function Providers({ children }) {
   return (
-    <AuthProvider>
-      {children}
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: 'rgba(26, 26, 46, 0.95)',
-            backdropFilter: 'blur(20px)',
-            color: '#e2e8f0',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '12px',
-            fontSize: '14px',
-          },
-          success: {
-            iconTheme: { primary: '#00d4ff', secondary: '#0f0f23' },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#0f0f23' },
-          },
-        }}
-      />
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <AuthProvider>
+        {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
+            className: '!bg-white dark:!bg-dark-900 !text-slate-900 dark:!text-slate-100 !border !border-slate-200 dark:!border-white/10 !backdrop-blur-xl',
+            success: {
+              iconTheme: { primary: '#00d4ff', secondary: 'transparent' },
+            },
+            error: {
+              iconTheme: { primary: '#ef4444', secondary: 'transparent' },
+            },
+          }}
+        />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

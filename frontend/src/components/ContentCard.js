@@ -1,11 +1,18 @@
 'use client';
 
+import { Image as ImageIcon, Music, Video, Ticket, CheckCircle2 } from 'lucide-react';
+
 export default function ContentCard({ item, showCreator = true }) {
-  const typeIcons = { image: '🖼️', audio: '🎵', video: '🎬' };
+  const typeIcons = { 
+    image: <ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />, 
+    audio: <Music className="w-16 h-16 text-white" strokeWidth={1.5} />, 
+    video: <Video className="w-16 h-16 text-white" strokeWidth={1.5} /> 
+  };
+  
   const typeColors = {
-    image: 'from-cyan-500 to-blue-600',
-    audio: 'from-purple-500 to-pink-600',
-    video: 'from-amber-500 to-red-600',
+    image: 'from-cyan-500/80 to-blue-600/80',
+    audio: 'from-purple-500/80 to-pink-600/80',
+    video: 'from-amber-500/80 to-red-600/80',
   };
 
   const category = item.category || item.content_type || 'image';
@@ -14,16 +21,18 @@ export default function ContentCard({ item, showCreator = true }) {
     <div className="glass-card-hover group overflow-hidden">
       {/* Preview */}
       <div className={`relative h-48 bg-gradient-to-br ${typeColors[category] || typeColors.image} flex items-center justify-center`}>
-        <span className="text-6xl opacity-50 group-hover:scale-110 transition-transform duration-500">
-          {typeIcons[category] || '📄'}
-        </span>
+        <div className="opacity-50 group-hover:scale-110 transition-transform duration-500">
+          {typeIcons[category] || <ImageIcon className="w-16 h-16 text-white" strokeWidth={1.5} />}
+        </div>
         {item.status === 'REGISTERED' && (
           <div className="absolute top-3 right-3">
-            <span className="badge-success text-[10px]">Verified ✓</span>
+            <span className="badge-success text-[10px] flex items-center gap-1.5 px-2 py-1">
+              <CheckCircle2 className="w-3 h-3" /> Verified
+            </span>
           </div>
         )}
         {item.price && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/40 backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
             <span className="text-xs text-white font-semibold">{item.price} MATIC</span>
           </div>
         )}
@@ -39,7 +48,9 @@ export default function ContentCard({ item, showCreator = true }) {
         )}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
           <span className="text-xs text-white/30 capitalize">{category}</span>
-          <span className="text-xs text-white/30">🎫 {item.license_count || 0} licenses</span>
+          <span className="text-xs text-white/30 flex items-center gap-1.5">
+            <Ticket className="w-3.5 h-3.5 opacity-70" /> {item.license_count || 0} licenses
+          </span>
         </div>
       </div>
     </div>

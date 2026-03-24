@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import StatusTracker from '@/components/StatusTracker';
 import EarningsChart from '@/components/EarningsChart';
+import { DashboardSkeleton } from '@/components/SkeletonLoader';
 import { useAuth } from '@/context/AuthContext';
+import { Folder, DollarSign, Unlock, Ticket, Hourglass, CheckCircle2, Rocket, FileCheck, AlertTriangle, UploadCloud } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -78,7 +80,7 @@ export default function DashboardPage() {
       setUploadFile(null);
       setUploadMeta({ title: '', description: '', category: 'image', price: '0.01' });
       setTab('processing');
-      toast.success('Upload started! Checking for duplicates...', { icon: '🚀' });
+      toast.success('Upload started! Checking for duplicates...', { icon: <Rocket className="w-4 h-4 text-neon-cyan" /> });
     } catch (err) {
       toast.error(err.message || 'Upload failed');
     } finally {
@@ -88,11 +90,11 @@ export default function DashboardPage() {
 
   const handleJobComplete = (result) => {
     if (result.status === 'REGISTERED') {
-      toast.success(`Content registered successfully!`, { icon: '📜' });
+      toast.success(`Content registered successfully!`, { icon: <FileCheck className="w-4 h-4 text-emerald-500" /> });
       // Refresh content list
       api.getMyContent().then(res => setContent(res.content || []));
     } else if (result.status === 'REJECTED') {
-      toast.error(`Content rejected: ${result.error}`, { icon: '⚠️' });
+      toast.error(`Content rejected: ${result.error}`, { icon: <AlertTriangle className="w-4 h-4 text-red-500" /> });
     } else {
       toast.error(`Processing failed: ${result.error}`);
     }
@@ -121,7 +123,9 @@ export default function DashboardPage() {
     return (
       <main className="page-container">
         <Navbar />
-        <div className="pt-32 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-neon-cyan border-t-transparent animate-spin" /></div>
+        <div className="pt-24 pb-16 content-wrapper">
+          <DashboardSkeleton />
+        </div>
       </main>
     );
   }
@@ -130,12 +134,12 @@ export default function DashboardPage() {
     <main className="page-container">
       <Navbar />
 
-      <div className="pt-24 pb-16 content-wrapper">
+      <div className="pt-24 pb-16 content-wrapper animate-fade-in">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Creator Dashboard</h1>
-            <p className="text-white/40 mt-1">Manage your content, track earnings, and claim royalties</p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Creator Dashboard</h1>
+            <p className="text-slate-500 dark:text-white/40 mt-1">Manage your content, track earnings, and claim royalties</p>
           </div>
           <button onClick={() => setShowUpload(true)} className="btn-primary mt-4 md:mt-0 flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,18 +152,18 @@ export default function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Content', value: content.length, icon: '📁', color: 'from-cyan-500 to-blue-500' },
-            { label: 'Total Earnings', value: `${earnings?.totalEarnings || 0} MATIC`, icon: '💰', color: 'from-emerald-500 to-teal-500' },
-            { label: 'Unclaimed', value: `${earnings?.unclaimed || 0} MATIC`, icon: '🔓', color: 'from-amber-500 to-orange-500' },
-            { label: 'Total Licenses', value: content.reduce((sum, c) => sum + (parseInt(c.license_count) || 0), 0), icon: '🎫', color: 'from-purple-500 to-pink-500' },
+            { label: 'Total Content', value: content.length, icon: <Folder className="w-5 h-5 text-white" strokeWidth={2.5} />, color: 'from-cyan-500 to-blue-500' },
+            { label: 'Total Earnings', value: `${earnings?.totalEarnings || 0} MATIC`, icon: <DollarSign className="w-5 h-5 text-white" strokeWidth={2.5} />, color: 'from-emerald-500 to-teal-500' },
+            { label: 'Unclaimed', value: `${earnings?.unclaimed || 0} MATIC`, icon: <Unlock className="w-5 h-5 text-white" strokeWidth={2.5} />, color: 'from-amber-500 to-orange-500' },
+            { label: 'Total Licenses', value: content.reduce((sum, c) => sum + (parseInt(c.license_count) || 0), 0), icon: <Ticket className="w-5 h-5 text-white" strokeWidth={2.5} />, color: 'from-purple-500 to-pink-500' },
           ].map((stat, i) => (
             <div key={i} className="glass-card p-5">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-2xl">{stat.icon}</span>
+                <div className={`p-2 rounded-xl bg-gradient-to-br ${stat.color} shadow-lg opacity-90`}>{stat.icon}</div>
                 <div className={`w-8 h-1 rounded-full bg-gradient-to-r ${stat.color}`} />
               </div>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-xs text-white/40 mt-1">{stat.label}</div>
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</div>
+              <div className="text-xs text-slate-500 dark:text-white/40 mt-1">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -174,7 +178,7 @@ export default function DashboardPage() {
           {['content', 'processing'].map((t) => (
             <button key={t} onClick={() => setTab(t)}
                     className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                      tab === t ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
+                      tab === t ? 'bg-black/10 text-slate-900 dark:bg-white/10 dark:text-white' : 'text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white/60'
                     }`}>
               {t === 'content' ? 'My Content' : `Processing (${activeJobs.length})`}
             </button>

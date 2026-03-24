@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ContentCard from '@/components/ContentCard';
+import { CardSkeleton } from '@/components/SkeletonLoader';
+import { Search } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -39,16 +41,14 @@ export default function MarketplacePage() {
       <div className="pt-24 pb-16 content-wrapper">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Marketplace</h1>
-            <p className="text-white/50 text-lg">Discover AI-verified, blockchain-backed digital assets.</p>
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">Marketplace</h1>
+            <p className="text-slate-500 dark:text-white/50 text-lg">Discover AI-verified, blockchain-backed digital assets.</p>
           </div>
 
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative flex-1 sm:w-64">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-white/40" />
               <input type="text" placeholder="Search..." className="input-field pl-9"
                      value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
@@ -71,17 +71,24 @@ export default function MarketplacePage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 rounded-full border-2 border-neon-cyan border-t-transparent animate-spin" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
         ) : content.length === 0 ? (
-          <div className="glass-card p-12 text-center mt-8">
-            <span className="text-5xl block mb-4 opacity-50">🔍</span>
-            <h3 className="text-xl font-semibold text-white mb-2">No content found</h3>
-            <p className="text-white/40">Try adjusting your filters or check back later.</p>
+          <div className="glass-card p-12 text-center mt-8 animate-fade-in">
+            <Search className="w-12 h-12 text-slate-400 dark:text-white/20 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No content found</h3>
+            <p className="text-slate-500 dark:text-white/40">Try adjusting your filters or check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
             {content.map((item) => (
               <Link key={item.id} href={`/content/${item.id}`}>
                 <ContentCard item={item} />

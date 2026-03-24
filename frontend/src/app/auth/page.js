@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/context/AuthContext';
+import { Paintbrush, ShoppingCart, Lock, Hexagon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AuthPage() {
@@ -58,9 +59,7 @@ export default function AuthPage() {
             <div className="text-center mb-8">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-purple 
                               flex items-center justify-center mb-4 shadow-lg shadow-neon-cyan/20">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+                <Hexagon className="w-7 h-7 text-white" strokeWidth={2} />
               </div>
               <h1 className="text-2xl font-bold text-white">
                 {mode === 'login' ? 'Welcome Back' : 'Join CreatorChain'}
@@ -130,16 +129,16 @@ export default function AuthPage() {
             <div className="grid grid-cols-2 gap-3">
               <button type="button" className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
                       onClick={() => handleDemoLogin('creator')}>
-                <span>🎨</span> Demo Creator
+                <Paintbrush className="w-4 h-4 opacity-70" /> Demo Creator
               </button>
               <button type="button" className="btn-secondary py-2.5 text-sm flex items-center justify-center gap-2"
                       onClick={() => handleDemoLogin('buyer')}>
-                <span>🛒</span> Demo Buyer
+                <ShoppingCart className="w-4 h-4 opacity-70" /> Demo Buyer
               </button>
             </div>
 
-            <p className="text-center text-xs text-white/20 mt-6 md:px-4">
-              🔒 An embedded wallet (ERC-4337) will be automatically provisioned.
+            <p className="text-center text-xs text-white/30 mt-6 md:px-4 flex items-center justify-center gap-2">
+              <Lock className="w-3.5 h-3.5 opacity-50" /> An embedded wallet (ERC-4337) will be automatically provisioned.
             </p>
           </div>
         </div>

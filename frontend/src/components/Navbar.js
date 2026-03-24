@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from 'next-themes';
+import { Hexagon, LogOut, Sun, Moon, Menu, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const navLinks = [
@@ -17,7 +19,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -42,10 +48,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center
                             group-hover:shadow-lg group-hover:shadow-neon-cyan/30 transition-all duration-300">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              <Hexagon className="w-5 h-5 text-white" strokeWidth={2.5} />
             </div>
             <span className="text-xl font-bold neon-text">CreatorChain</span>
           </Link>
@@ -56,8 +59,8 @@ export default function Navbar() {
               const isActive = pathname === link.href;
               return (
                 <Link key={link.name} href={link.href}
-                      className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
-                        isActive ? 'text-white bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/5'
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                        isActive ? 'text-slate-900 bg-black/5 dark:text-white dark:bg-white/10' : 'text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                       }`}>
                   {link.name}
                 </Link>
@@ -65,22 +68,27 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Auth / Wallet */}
+          {/* Auth / Action */}
           <div className="hidden md:flex items-center gap-3">
+            {mounted && (
+              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                      className="p-2 mr-2 text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5">
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            )}
+
             {user ? (
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 glass-card rounded-full">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs font-mono text-white/60">
+                  <span className="text-xs font-mono text-slate-600 dark:text-white/60">
                     {user.wallet_address?.slice(0, 6)}...{user.wallet_address?.slice(-4)}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 border-l border-white/10 pl-4">
-                  <span className="text-sm font-medium text-white/80">{user.name}</span>
-                  <button onClick={handleLogout} className="text-white/40 hover:text-white transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                <div className="flex items-center gap-3 border-l border-black/10 dark:border-white/10 pl-4">
+                  <span className="text-sm font-medium text-slate-800 dark:text-white/80">{user.name}</span>
+                  <button onClick={handleLogout} className="text-slate-500 hover:text-red-500 dark:text-white/40 dark:hover:text-red-400 transition-colors">
+                    <LogOut className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -93,36 +101,41 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button onClick={() => setMobileOpen(!mobileOpen)}
-                  className="md:hidden p-2 text-white/70 hover:text-white">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+                  className="md:hidden p-2 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white">
+            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-dark-950/95 backdrop-blur-xl border-t border-white/5 animate-slide-up">
+        <div className="md:hidden bg-slate-50/95 dark:bg-dark-950/95 backdrop-blur-xl border-t border-black/5 dark:border-white/5 animate-slide-up">
           <div className="px-4 py-4 space-y-2">
             {navLinks.map((link) => (
               <Link key={link.name} href={link.href}
-                    className="block px-4 py-3 text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                    className="block px-4 py-3 text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
                     onClick={() => setMobileOpen(false)}>
                 {link.name}
               </Link>
             ))}
-            <div className="pt-2 border-t border-white/10 mt-2">
+            
+            <div className="pt-2 border-t border-black/10 dark:border-white/10 mt-2 flex justify-between items-center px-4 py-2">
+              <span className="text-slate-600 dark:text-white/70 text-sm">Theme</span>
+              {mounted && (
+                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="p-2 text-slate-500 dark:text-white/40 bg-black/5 dark:bg-white/5 rounded-full">
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-black/10 dark:border-white/10 mt-2">
               {user ? (
-                <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-4 py-3 text-red-400 hover:bg-white/5 rounded-xl transition-colors">
+                <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="w-full text-left px-4 py-3 text-red-500 dark:text-red-400 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors font-medium">
                   Log Out
                 </button>
               ) : (
-                <Link href="/auth" className="block text-center btn-primary text-sm"
+                <Link href="/auth" className="block text-center btn-primary text-sm mt-4"
                       onClick={() => setMobileOpen(false)}>
                   Get Started
                 </Link>
