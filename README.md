@@ -1,4 +1,4 @@
-# ⚡ CreatorChain
+# CreatorChain
 
 > **Blockchain as Legal Notary, Not a Database.**
 
@@ -10,7 +10,7 @@ A production-grade hybrid platform for digital content ownership, licensing, and
 
 ---
 
-## 🎯 Problems Solved
+##  Problems Solved
 
 | Problem | Solution |
 |---------|----------|
@@ -21,7 +21,7 @@ A production-grade hybrid platform for digital content ownership, licensing, and
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
@@ -53,7 +53,7 @@ A production-grade hybrid platform for digital content ownership, licensing, and
 
 ---
 
-## 📁 Monorepo Structure
+##  Monorepo Structure
 
 ```
 BlockChain/
@@ -85,7 +85,7 @@ BlockChain/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - Node.js 20+
@@ -152,7 +152,7 @@ Navigate to **http://localhost:3000**
 
 ---
 
-## 🔄 Content Pipeline
+## Content Pipeline
 
 ```
 Upload → AI Fingerprint → Duplicate Check → IPFS Storage → Blockchain Registration → PDF Certificate
@@ -169,7 +169,7 @@ Upload → AI Fingerprint → Duplicate Check → IPFS Storage → Blockchain Re
 
 ---
 
-## 🧠 AI Fingerprinting
+## AI Fingerprinting
 
 | Content Type | Algorithm | Library |
 |-------------|-----------|---------|
@@ -181,7 +181,7 @@ Plus **invisible watermarking** via LSB steganography for off-platform tracking.
 
 ---
 
-## 🔗 Smart Contracts
+##  Smart Contracts
 
 ### CreatorRights.sol
 - `registerRights()` — Records ownership with fingerprint hash and royalty config
@@ -195,7 +195,7 @@ Plus **invisible watermarking** via LSB steganography for off-platform tracking.
 
 ---
 
-## 👤 User Roles
+##  User Roles
 
 | Role | Capabilities |
 |------|-------------|
@@ -205,7 +205,7 @@ Plus **invisible watermarking** via LSB steganography for off-platform tracking.
 
 ---
 
-## 🔧 Production Swap Guide
+##  Production Swap Guide
 
 | Development Stub | Production Replacement |
 |-----------------|----------------------|
@@ -217,7 +217,7 @@ Plus **invisible watermarking** via LSB steganography for off-platform tracking.
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Smart contract tests
@@ -232,7 +232,7 @@ cd ai-service && python -m pytest tests/
 
 ---
 
-## 🐳 Docker (Full Stack)
+##  Docker (Full Stack)
 
 ```bash
 docker-compose up --build
@@ -242,12 +242,12 @@ Services: PostgreSQL (:5432), Redis (:6379), AI (:5000), Backend (:4000), Fronte
 
 ---
 
-## 📜 License
+## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
 <p align="center">
-  Built with ⚡ by <strong>CreatorChain</strong> — Blockchain as Legal Notary
+  Built with  by <strong>CreatorChain</strong> — Blockchain as Legal Notary
 </p>
